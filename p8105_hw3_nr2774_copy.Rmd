@@ -1,0 +1,214 @@
+---
+title: "p8105_hw3_nr2774"
+author: "Nergui"
+date: "2022-10-09"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+### Problem 1
+
+
+```{r}
+#devtools::install_github("p8105/p8105.datasets")
+library(tidyverse)
+library(dplyr)
+library(readxl)
+library(ggplot2)
+library(patchwork)
+library(p8105.datasets)
+library(lubridate)
+data("instacart")
+
+knitr::opts_chunk$set(
+  fig.width = 6,
+  fig.asp = .6,
+  out.width = "90%"
+)
+
+theme_set(theme_minimal() + theme(legend.position = "bottom"))
+
+options(
+  ggplot2.continuous.colour = "viridis",
+  ggplot2.continuous.fill = "viridis"
+)
+
+scale_colour_discrete = scale_colour_viridis_d
+scale_fill_discrete = scale_fill_viridis_d
+
+```
+
+### Problem 2 
+
+```{r}
+# Load, tidy, and otherwise wrangle the data.
+#what the col_intger? 
+accel_df = read_csv("~/Desktop/Data Science/HW/p8105_hw3_nr2774/accel_data.csv",
+                    col_types = cols(
+      week = col_integer(),
+      day_id = col_integer()
+      )) %>%
+  janitor::clean_names() |> 
+    mutate(
+    weekend = case_when(
+      day == "Monday" ~ "weekday",
+      day == "Tuesday" ~ "weekday",
+      day == "Wednesday" ~ "weekday",
+      day == "Thursday" ~ "weekday",
+      day == "Friday" ~ "weekday",
+      day == "Saturday" ~ "weekend",
+      day == "Sunday" ~ "weekend"
+    ),
+    day = fct_relevel(day,"Monday", "Tuesday", "Wednesday", "Thursday",
+                      "Friday", "Saturday", "Sunday"))
+
+accel_df_pivot = accel_df |> 
+  relocate("weekend") %>%
+  pivot_longer(
+    activity_1:activity_1440, 
+    names_to = "activity",
+    names_prefix = "activity_",
+    values_to = "activity_count") |> 
+  rename(activity_min = activity) |> 
+  mutate(activity_min = as.numeric(activity_min))
+
+
+```
+
+* There are `r nrow(accel_df)` observations in the activiy dataset along with  `r ncol(accel_df)` variables. Those variables are called  `r names(accel_df)`.
+
+```{r}
+# create a table
+# ??? why are they only 105 obs ? 4 variables? is this table weird? 
+# why do you have to make this extra step of activity ? 
+#mutate(litters_data,
+ # wt_gain = gd18_weight - gd0_weight,
+ # group = str_to_lower(group)
+#)
+
+accel_df_pivot_min = 
+  accel_df_pivot |> 
+  group_by(day_id, day, week) |> 
+  summarize(total_activity = sum(activity_count), 
+            .groups = "drop") %>%
+  ungroup()  
+
+accel_df_pivot_min |> 
+  select(-day_id) |>
+  pivot_wider(
+    names_from = "day",
+    values_from = "total_activity")
+  knitr::kable(digits = 1) 
+    
+```
+
+
+* Activity counts were lowest on the Saturdays of (weeks 4 and 5). The individual appears to be most active(gradualing increasing activity count) on weeks days. 
+
+```{r}
+## ??? this is not reading ? how to solve df problem? 
+accel_df_pivot |> 
+  ggplot(aes(x = activity_min, y = activity_count, color = day)) + geom_point() + 
+  labs(
+    title = "24-Hour Activity Count by Day",
+    x = "Time",
+    y = "Activity Count",
+    caption = "Data from the accel dataset") + 
+  scale_x_continuous(
+    breaks = c(0, 360, 720, 1080, 1440), 
+    labels = c("12AM", "6AM", "12PM", "6PM", "11:59PM"),
+    limits = c(0, 1440)
+    )
+```
+
+* The person is least active during sleeping hours which is between 12 am to 6 am. The the most active time of the day is in the evening after 6pm and right before mid night. 
+
+### Problem3
+
+```{r}
+
+library(p8105.datasets)
+data("ny_noaa")
+
+```
+
+The NY_NOAA dataset was driven from NOAA National Climatic Data Center. It contains information from all New York state weather stations from January 1, 1981 through December 31, 2010.
+The NOAA dataset contains `r nrow(ny_noaa)` rows and `r ncol(ny_noaa)` columns.
+
+The variables in the data set are:
+
+* `id`: Weather station ID
+* `date`: Date of observation
+* `prcp`: Precipitation (tenths of mm)
+* `snow`: Snowfall (mm)
+* `snwd`: Snow depth (mm)
+* `tmax`: Maximum temperature (tenths of degrees C)
+* `tmin`: Minimum temperature (tenths of degrees C)
+
+There are `r count(distinct(ny_noaa, id))` distinct weather stations in NYS.
+
+Because not all weather stations in NY collect all these variables, the original dataset contains extensive amount of missing data.
+
+To take a closer look at the amount of missing data, let's look at what proportion of data is missing for each variable.
+
+```{r}
+noaa_missing = ny_noaa |> 
+  summarize(
+    missing_prcp = mean(is.na(prcp)),
+    missing_snow = mean(is.na(snow)),
+    missing_snwd = mean(is.na(snwd)),
+    missing_tmax = mean(is.na(tmax)),
+    missing_tmin = mean(is.na(tmin))
+  ) |> 
+  knitr::kable()
+```
+
+* Data shows that there nearly 50% of data is missing in `tmax` and `tmin`. 43 % for each of these variables have missing data. 
+
+```{r}
+#   (month = month.abb[month]), |>  how to use this commmand?? 
+noaa_tidy = ny_noaa %>% 
+  janitor::clean_names() %>% 
+  separate(date, into = c("year", "month", "day"), convert = TRUE) %>%
+  mutate(
+    prcp = prcp / 10 ,
+    tmax = as.numeric(tmax) / 10,
+    tmin = as.numeric(tmin) / 10,
+    year = as.numeric(year),
+    day = as.numeric(day), 
+    month = recode_factor(month,
+          "01" = "January",
+          "02" = "February",
+          "03" = "March",
+          "04" = "April",
+          "05" = "May",
+          "06" = "June",
+          "07" = "July",
+          "08" = "August",
+          "09" = "September",
+          "10" = "October",
+          "11" = "November",
+          "12" = "December"
+          )) %>% 
+  relocate(year, month, day, everything())
+```
+
+```{r}
+noaa_tidy |>  
+  count(snow) |> 
+  arrange(desc(n))
+```
+
+* For snowfall, the most commonly observed value is '0', indicating that the most days in NY is not snowy. 
+
+```{r}
+tmax = noaa_tidy |>
+  select(January , July) |> 
+  group_by(id, year, month) |> 
+  summarise(tmax_mean = mean(tmax), na.rm = TRUE)
+```
+
