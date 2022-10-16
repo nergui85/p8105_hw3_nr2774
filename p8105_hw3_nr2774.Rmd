@@ -2,7 +2,7 @@
 title: "p8105_hw3_nr2774"
 author: "Nergui"
 date: "2022-10-09"
-output: html_document
+output: github_document
 ---
 
 ```{r setup, include=FALSE}
@@ -191,4 +191,30 @@ noaa_tidy |>
 
 * For snowfall, the most commonly observed value is '0', indicating that the most days in NY is not snowy. 
 
+
+```{r}
+tmax_noaa = noaa_tidy %>% 
+  filter(month %in% c("January", "July")) %>% 
+  group_by(id, year, month) %>% 
+  summarize(mean_tmax = mean(tmax, na.rm = TRUE))
+ggplot(tmax_noaa, aes(x = year, y = mean_tmax, color = month)) +
+  geom_point(alpha = 0.2) +
+  geom_smooth(alpha = 0.5) +
+  labs(
+    title = "Avg Max Temp in January and July in each NY Station Across Years",
+    x = "Year",
+    y = "Temp (°C)",
+    caption = "Data from the NOAA dataset"
+  ) +
+  scale_x_continuous(
+    breaks = c(1980, 1985, 1990, 1995, 2000, 2005, 2010)
+    ) +
+  facet_grid(. ~ month) +
+  scale_color_manual(values = c("navy", "orange")) +
+  theme(
+    legend.position = "none")
+
+
+
+```
 
