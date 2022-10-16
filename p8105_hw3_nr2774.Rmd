@@ -40,16 +40,74 @@ scale_fill_discrete = scale_fill_viridis_d
 
 ```
 
+
+```{r}
+data("instacart")
+
+instacart = 
+  instacart %>% 
+  as_tibble(instacart)
+```
+
+#### Answer questions about the data
+
+This dataset contains `r nrow(instacart)` rows and `r ncol(instacart)` columns, with each row resprenting a single product from an instacart order. Variables include identifiers for user, order, and product; the order in which each product was added to the cart. There are several order-level variables, describing the day and time of the order, and number of days since prior order. Then there are several item-specific variables, describing the product name (e.g. Yogurt, Avocado), department (e.g. dairy and eggs, produce), and aisle (e.g. yogurt, fresh fruits), and whether the item has been ordered by this user in the past. In total, there are `r instacart %>% select(product_id) %>% distinct %>% count` products found in `r instacart %>% select(user_id, order_id) %>% distinct %>% count` orders from `r instacart %>% select(user_id) %>% distinct %>% count` distinct users.
+
+Below is a table summarizing the number of items ordered from aisle. In total, there are 134 aisles, with fresh vegetables and fresh fruits holding the most items ordered by far.
+
+```{r}
+instacart %>% 
+  count(aisle) %>% 
+  arrange(desc(n))
+```
+
+Next is a plot that shows the number of items ordered in each aisle. Here, aisles are ordered by ascending number of items.
+
+```{r}
+instacart %>% 
+  count(aisle) %>% 
+  filter(n > 10000) %>% 
+  mutate(aisle = fct_reorder(aisle, n)) %>% 
+  ggplot(aes(x = aisle, y = n)) + 
+  geom_point() + 
+  labs(title = "Number of items ordered in each aisle") +
+  theme(axis.text.x = element_text(angle = 60, hjust = 1))
+```
+
+Our next table shows the three most popular items in aisles `baking ingredients`, `dog food care`, and `packaged vegetables fruits`, and includes the number of times each item is ordered in your table.
+
+```{r}
+instacart %>% 
+  filter(aisle %in% c("baking ingredients", "dog food care", "packaged vegetables fruits")) %>%
+  group_by(aisle) %>% 
+  count(product_name) %>% 
+  mutate(rank = min_rank(desc(n))) %>% 
+  filter(rank < 4) %>% 
+  arrange(desc(n)) %>%
+  knitr::kable()
+```
+
+Finally is a table showing the mean hour of the day at which Pink Lady Apples and Coffee Ice Cream are ordered on each day of the week. This table has been formatted in an untidy manner for human readers. Pink Lady Apples are generally purchased slightly earlier in the day than Coffee Ice Cream, with the exception of day 5.
+
+```{r}
+instacart %>%
+  filter(product_name %in% c("Pink Lady Apples", "Coffee Ice Cream")) %>%
+  group_by(product_name, order_dow) %>%
+  summarize(mean_hour = mean(order_hour_of_day)) %>%
+  spread(key = order_dow, value = mean_hour) %>%
+  knitr::kable(digits = 2)
+```
+
 ### Problem 2 
 
 ```{r}
 # Load, tidy, and otherwise wrangle the data.
-#what the col_intger? 
+
 accel_df = read_csv("data_hw3/accel_data.csv",
                     col_types = cols(
       week = col_integer(),
       day_id = col_integer()
-      )) %>%
+      )) |> 
   janitor::clean_names() |> 
     mutate(
     weekend = case_when(
@@ -65,7 +123,7 @@ accel_df = read_csv("data_hw3/accel_data.csv",
                       "Friday", "Saturday", "Sunday"))
 
 accel_df_pivot = accel_df |> 
-  relocate("weekend") %>%
+  relocate("weekend") |> 
   pivot_longer(
     activity_1:activity_1440, 
     names_to = "activity",
@@ -74,10 +132,9 @@ accel_df_pivot = accel_df |>
   rename(activity_min = activity) |> 
   mutate(activity_min = as.numeric(activity_min))
 
-
 ```
 
-* There are `r nrow(accel_df)` observations in the activiy dataset along with  `r ncol(accel_df)` variables. Those variables are called  `r names(accel_df)`.
+* There are `r nrow(accel_df)` observations in the activiy dataset along with  `r ncol(accel_df)` variables. Those variables are called week, day_id, activity_1:activity_1440. 
 
 ```{r}
 # create a table
@@ -101,9 +158,10 @@ accel_df_pivot_min |>
 * Activity counts were lowest on the Saturdays of (weeks 4 and 5). The individual appears to be most active(gradualing increasing activity count) on weeks days. 
 
 ```{r}
-## ??? this is not reading ? how to solve df problem? 
+## Single - panel plot for 24-hours activity
+
 accel_df_pivot |> 
-  ggplot(aes(x = activity_min, y = activity_count, color = day)) + geom_line() + 
+  ggplot(aes(x = activity_min, y = activity_count, color = day)) + geom_point() + 
   labs(
     title = "24-Hour Activity Count by Day",
     x = "Time",
@@ -115,7 +173,7 @@ accel_df_pivot |>
 ### Problem3
 
 ```{r}
-#??? hwo do you know units of the variables???
+#Exploration of data 
 
 library(p8105.datasets)
 data("ny_noaa")
@@ -156,9 +214,10 @@ noaa_missing = ny_noaa |>
 * Data shows that there nearly 50% of data is missing in `tmax` and `tmin`. 43 % for each of these variables have missing data. 
 
 ```{r}
-noaa_tidy = ny_noaa %>% 
-  janitor::clean_names() %>% 
-  separate(date, into = c("year", "month", "day"), convert = TRUE) %>%
+# Data cleaning ~ Tidying 
+noaa_tidy = ny_noaa |>  
+  janitor::clean_names() |>  
+  separate(date, into = c("year", "month", "day"), convert = TRUE) |> 
   mutate(
     prcp = prcp / 10 ,
     tmax = as.numeric(tmax) / 10,
@@ -178,7 +237,7 @@ noaa_tidy = ny_noaa %>%
           "10" = "October",
           "11" = "November",
           "12" = "December"
-          )) %>% 
+          )) |>  
   relocate(year, month, day, everything())
 ```
   
@@ -193,9 +252,10 @@ noaa_tidy |>
 
 
 ```{r}
-tmax_noaa = noaa_tidy %>% 
+# Two-panel plot ~ Average Max Temperature 
+tmax_noaa = noaa_tidy |>  
   filter(month %in% c("January", "July")) %>% 
-  group_by(id, year, month) %>% 
+  group_by(id, year, month) |>  
   summarize(mean_tmax = mean(tmax, na.rm = TRUE))
 ggplot(tmax_noaa, aes(x = year, y = mean_tmax, color = month)) +
   geom_point(alpha = 0.2) +
@@ -214,7 +274,42 @@ ggplot(tmax_noaa, aes(x = year, y = mean_tmax, color = month)) +
   theme(
     legend.position = "none")
 
+```
+
+*The average max temp in January is usually within the -10-10°C range. There was not much difference in average max temperatures between 1980 and 2010. There are 2 sinfiifant outlier observed in years of 1980 and 2005. 
+
+geom_sooth indicated that there might a slight increase in January over years when its compared to 1980 and 2010. By running statistical analysis, we will know the significance level. 
+
+Average max temperatures in July were mostly bewteen 25-30°C range. There were couple outliers. However, tempearture difference over the years were no apparently different. 
+
+```{r}
+# Two panel plot ~ tmax vs tmin 
+tmax_tmin_plot = ggplot(noaa_tidy, aes(x = tmin, y = tmax)) +
+  geom_hex(bins = 40) +
+  geom_smooth(se = F)
+  labs(
+    title = "NY Temperatures (1981-2010)",
+    x = "Min Temp (°C)",
+    y = "Max Temp (°C)"
+  ) + 
+  theme(legend.position = "right")
+tmax_tmin_plot
+
+```
 
 
+```{r}
+library(ggridges)
+snowfall_plot = noaa_tidy |>  
+  filter(snow > 0, snow < 100) |>  
+  ggplot(aes(x = snow, y = factor(year), fill = stat(x))) +
+  geom_density_ridges_gradient(scale = 3, rel_min_height = 0.01) + 
+  scale_fill_viridis_c(name = "Snowfall (mm)", option = "A") + 
+  labs(
+    title = "NY Snowfall Values, 0-100mm (1981-2010)",
+    x = "Snowfall (mm)",
+    y = "Year"
+  )
+snowfall_plot
 ```
 
